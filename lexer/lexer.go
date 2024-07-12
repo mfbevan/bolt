@@ -17,17 +17,6 @@ func New(input string) *Lexer {
 	return l
 }
 
-// Read the next character in the input and advance the lexer read position until the end of the input
-func (l *Lexer) readChar() {
-	if l.readPosition >= len(l.input) {
-		l.ch = 0
-	} else {
-		l.ch = l.input[l.readPosition]
-	}
-	l.position = l.readPosition
-	l.readPosition += 1
-}
-
 // Determine the token type of the next token in the input
 //   - Whitespace is eaten and ignored
 func (l *Lexer) NextToken() token.Token {
@@ -37,7 +26,12 @@ func (l *Lexer) NextToken() token.Token {
 
 	switch l.ch {
 	case '=':
-		tok = newToken(token.ASSIGN, l.ch)
+		if l.peekChar() == '=' {
+			l.readChar()
+			tok = token.Token{Type: token.EQ, Literal: "=="}
+		} else {
+			tok = newToken(token.ASSIGN, l.ch)
+		}
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case '(':
@@ -52,6 +46,23 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.COMMA, l.ch)
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
+	case '-':
+		tok = newToken(token.MINUS, l.ch)
+	case '!':
+		if l.peekChar() == '=' {
+			l.readChar()
+			tok = token.Token{Type: token.NOT_EQ, Literal: "!="}
+		} else {
+			tok = newToken(token.BANG, l.ch)
+		}
+	case '*':
+		tok = newToken(token.ASTERISK, l.ch)
+	case '/':
+		tok = newToken(token.SLASH, l.ch)
+	case '<':
+		tok = newToken(token.LT, l.ch)
+	case '>':
+		tok = newToken(token.GT, l.ch)
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -73,6 +84,27 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
+// Read the next character in the input and advance the lexer read position until the end of the input
+func (l *Lexer) readChar() {
+	if l.readPosition >= len(l.input) {
+		l.ch = 0
+	} else {
+		l.ch = l.input[l.readPosition]
+	}
+	l.position = l.readPosition
+	l.readPosition += 1
+}
+
+// Peek at the next character in the input without advancing the lexer read position
+func (l *Lexer) peekChar() byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.readPosition]
+	}
+}
+
+// Read a multi-character identifier from the input
 func (l *Lexer) readIdentifier() string {
 	position := l.position
 	for isLetter(l.ch) {
@@ -81,10 +113,12 @@ func (l *Lexer) readIdentifier() string {
 	return l.input[position:l.position]
 }
 
+// Determine if a character is a letter
 func isLetter(ch byte) bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
 }
 
+// Read a multi-character number from the input
 func (l *Lexer) readNumber() string {
 	position := l.position
 	for isDigit(l.ch) {
@@ -93,10 +127,12 @@ func (l *Lexer) readNumber() string {
 	return l.input[position:l.position]
 }
 
+// Determine if a character is a digit
 func isDigit(ch byte) bool {
 	return '0' <= ch && ch <= '9'
 }
 
+// Eat and ignore whitespace characters
 func (l *Lexer) eatWhitespace() {
 	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
 		l.readChar()
