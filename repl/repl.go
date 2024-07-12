@@ -8,8 +8,13 @@ import (
 	"io"
 )
 
+// The REPL prompt is prepended to each input line and is used to indicate that the REPL is ready to accept input
 const PROMPT = "⚡️> "
 
+// Start the Bolt REPL
+//   - Read input from the user
+//   - Tokenize the input
+//   - Print the tokens
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 

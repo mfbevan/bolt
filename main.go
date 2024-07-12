@@ -7,6 +7,10 @@ import (
 	"os/user"
 )
 
+// Start the Bolt REPL
+//   - Get the current user
+//   - Print a welcome message
+//   - Start the REPL
 func main() {
 	user, err := user.Current()
 	if err != nil {

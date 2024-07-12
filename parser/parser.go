@@ -7,6 +7,11 @@ import (
 	"fmt"
 )
 
+// Type definition for the Bolt Parser
+//   - l: the lexer instance
+//   - curToken: the current token being parsed
+//   - peekToken: the next token to be parsed
+//   - errors: a list of errors encountered during parsing
 type Parser struct {
 	l         *lexer.Lexer
 	curToken  token.Token
@@ -36,6 +41,7 @@ func (p *Parser) Errors() []string {
 	return p.errors
 }
 
+// Error message for when the next token is not of the expected type
 func (p *Parser) peekError(t token.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead", t, p.peekToken.Type)
 	p.errors = append(p.errors, msg)
@@ -63,6 +69,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 
 // Attempt to parse an individual statement based on the current token type
 //   - If the current token is a LET token, parse a let statement
+//   - If the current token is a RETURN token, parse a return statement
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
 	case token.LET:
@@ -100,6 +107,9 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	return stmt
 }
 
+// Parse a return statement to ensure that it is well-formed
+//   - The statement must start with the token.RETURN token
+//   - Skip over any tokens until we encounter a semicolon
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 

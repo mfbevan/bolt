@@ -2,6 +2,9 @@ package token
 
 type TokenType string
 
+// Token represents a token in the input
+//   - Type: the type of the token
+//   - Literal: the literal value of the token (e.g. the identifier or character)
 type Token struct {
 	Type    TokenType
 	Literal string
@@ -58,6 +61,7 @@ var keywords = map[string]TokenType{
 	"false":  FALSE,
 }
 
+// Lookup known keywords and return a token identifier if found
 func LookupIdent(ident string) TokenType {
 	if tok, ok := keywords[ident]; ok {
 		return tok
