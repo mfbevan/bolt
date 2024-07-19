@@ -5,6 +5,18 @@ import (
 	"bolt/lexer"
 	"bolt/token"
 	"fmt"
+	"strconv"
+)
+
+const (
+	_ int = iota
+	LOWEST
+	EQUALS      // ==
+	LESSGREATER // > or <
+	SUM         // +
+	PRODUCT     // *
+	PREFIX      // -X or !X
+	CALL        // myFunction(X)
 )
 
 // Type definition for the Bolt Parser
@@ -13,11 +25,23 @@ import (
 //   - peekToken: the next token to be parsed
 //   - errors: a list of errors encountered during parsing
 type Parser struct {
-	l         *lexer.Lexer
+	l      *lexer.Lexer
+	errors []string
+
 	curToken  token.Token
 	peekToken token.Token
-	errors    []string
+
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns  map[token.TokenType]infixParseFn
 }
+
+// Type definitions for prefix parsing function
+type prefixParseFn func() ast.Expression
+
+// Type definitions for infix parsing function
+//   - The infixParseFn type is a function that takes an ast.Expression as an argument and returns an ast.Expression
+//   - The parameter is the left-hand side of the infix operator
+type infixParseFn func(ast.Expression) ast.Expression
 
 // Create, initialize and return a new Parser instance
 func New(l *lexer.Lexer) *Parser {
@@ -27,6 +51,12 @@ func New(l *lexer.Lexer) *Parser {
 	}
 	p.nextToken()
 	p.nextToken()
+
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.BANG, p.parsePrefixExpression)
+	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	return p
 }
 
@@ -77,7 +107,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
@@ -142,4 +172,87 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 		p.peekError(t)
 		return false
 	}
+}
+
+// Register a new prefix parsing function for a given token type
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tokenType] = fn
+}
+
+// Register a new infix parsing function for a given token type
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tokenType] = fn
+}
+
+// Parse an expression statement to ensure that it is well-formed
+//   - Parse the expression
+//   - If the next token is a semicolon, consume it
+//   - Return the expression statement
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.curToken}
+	stmt.Expression = p.parseExpression(LOWEST)
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+	return stmt
+}
+
+// Parse an expression based on the current token type, accounting for token operator precedence
+//   - Get the prefix parsing function for the current token type
+//   - If the prefix parsing function is nil, return nil
+//   - Otherwise, parse the expression
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		p.noPrefixParseFnError(p.curToken.Type)
+		return nil
+	}
+	leftExp := prefix()
+
+	return leftExp
+}
+
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	msg := fmt.Sprintf("no prefix parse function for %s found", t)
+	p.errors = append(p.errors, msg)
+}
+
+// Parse an identifier expression to ensure that it is well-formed
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+// Parse an integer literal expression to ensure that it is well-formed
+//   - Create a new integer literal expression
+//   - Parse the integer value. If the value cannot be parsed, log an error and return nil
+//   - Return the integer literal expression
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	lit := &ast.IntegerLiteral{Token: p.curToken}
+
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+	lit.Value = value
+	return lit
+}
+
+// Parse a prefix expression to ensure that it is well-formed
+//   - Create a new prefix expression
+//   - Set the operator to the current token's literal value
+//   - Parse the right-hand side of the expression
+//   - Return the prefix expression
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	expression := &ast.PrefixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+	}
+
+	p.nextToken()
+
+	expression.Right = p.parseExpression(PREFIX)
+
+	return expression
 }

@@ -134,3 +134,38 @@ func (es *ExpressionStatement) String() string {
 
 	return ""
 }
+
+// IntegerLiteral represents an integer expression in the AST.
+//   - Token: the token.INT token
+//   - Value: the value of the integer
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+func (il *IntegerLiteral) expressionNode()      {}
+func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
+func (il *IntegerLiteral) String() string       { return il.Token.Literal }
+
+// PrefixExpression represents a prefix expression in the AST.
+//   - Token: the prefix token
+//   - Operator: the operator of the prefix expression, e.g. ! or -
+//   - Right: the expression to the right of the operator
+type PrefixExpression struct {
+	Token    token.Token
+	Operator string
+	Right    Expression
+}
+
+func (pe *PrefixExpression) expressionNode()      {}
+func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *PrefixExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}
