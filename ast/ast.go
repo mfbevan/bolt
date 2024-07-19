@@ -1,11 +1,15 @@
 package ast
 
-import "bolt/token"
+import (
+	"bolt/token"
+	"bytes"
+)
 
 // Node is the interface that all nodes in the AST implement.
 //   - TokenLiteral: returns the literal value of the token
 type Node interface {
 	TokenLiteral() string
+	String() string
 }
 
 // Statement is the interface that all statement nodes in the AST implement.
@@ -37,6 +41,18 @@ func (p *Program) TokenLiteral() string {
 	}
 }
 
+// Create a buffer and write the return value of each statement's String method to it.
+// Return the buffer as a string.
+func (p *Program) String() string {
+	var out bytes.Buffer
+
+	for _, s := range p.Statements {
+		out.WriteString(s.String())
+	}
+
+	return out.String()
+}
+
 // LetStatement represents a let statement in the AST.
 //   - Token: the token.LET token
 //   - Name: the identifier of the let statement
@@ -49,6 +65,21 @@ type LetStatement struct {
 
 func (ls *LetStatement) statementNode()       {}
 func (ls *LetStatement) TokenLiteral() string { return ls.Token.Literal }
+func (ls *LetStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ls.TokenLiteral() + " ")
+	out.WriteString(ls.Name.String())
+	out.WriteString(" = ")
+
+	if ls.Value != nil {
+		out.WriteString(ls.Value.String())
+	}
+
+	out.WriteString(";")
+
+	return out.String()
+}
 
 // Identifier represents an identifier in the AST.
 //   - Token: the token.IDENT token
@@ -60,6 +91,7 @@ type Identifier struct {
 
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
+func (i *Identifier) String() string       { return i.Value }
 
 // ReturnStatement represents a return statement in the AST.
 //   - Token: the token.RETURN token
@@ -71,3 +103,34 @@ type ReturnStatement struct {
 
 func (rs *ReturnStatement) statementNode()       {}
 func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
+func (rs *ReturnStatement) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(rs.TokenLiteral() + " ")
+
+	if rs.ReturnValue != nil {
+		out.WriteString(rs.ReturnValue.String())
+	}
+
+	out.WriteString(";")
+
+	return out.String()
+}
+
+// ExpressionStatement represents an expression statement in the AST.
+//   - Token: the first token of the expression
+//   - Expression: the expression that the statement is bound to
+type ExpressionStatement struct {
+	Token      token.Token
+	Expression Expression
+}
+
+func (es *ExpressionStatement) statementNode()       {}
+func (es *ExpressionStatement) TokenLiteral() string { return es.Token.Literal }
+func (es *ExpressionStatement) String() string {
+	if es.Expression != nil {
+		return es.Expression.String()
+	}
+
+	return ""
+}
